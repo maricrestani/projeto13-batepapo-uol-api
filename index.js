@@ -26,18 +26,21 @@ mongoClient
 
 const userSchema = joi.object({
   name: joi.string().required(),
-  lastStatus: joi.required(),
+  lastStatus: joi.number().required,
+});
+
+const messageSchema = joi.object({
+  from: joi.string().required,
+  to: joi.string().required,
+  text: joi.string().required,
+  type: joi.string().valid("message", "private_message").required(),
+  time: joi.string().required,
 });
 
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
 
   try {
-    if (!name) {
-      res.status(422).send({ error: "name deve ser strings não vazio" });
-      return;
-    }
-
     const userAlredyExists = await db
       .collection("users")
       .findOne({ name: name });
@@ -78,15 +81,49 @@ app.post("/participants", async (req, res) => {
 });
 
 app.get("/participants", async (req, res) => {
+  try {
+    const participantsList = db.collection("users");
 
-  try{
-const participantsList = db.collection("users");
-const participants = await participantsList.find({}).toArray()
-res.send(participants)  
-} catch (err){
-  res.sendStatus(500)
-}
+    const participants = await participantsList.find().toArray();
+    res.send(participants);
+  } catch (err) {
+    res.sendStatus(500);
+  }
+});
 
+app.post("/messages", async (req, res) => {
+  try {
+    const { to, text, type } = req.body;
+    const user = req.headers.user;
+    const userExists = await db.collection("messages").findOne({ from: user });
+    if (!userExists) {
+      res.status(422).send("erro na verific se usuário existe");
+      return;
+    }
+
+    const newMessage = {
+      from: userExists.name,
+      to,
+      text,
+      type,
+      time: dayjs(Date.now()).format("HH:mm:ss"),
+    };
+
+    const validation = messageSchema.validate(newMessage, {
+      abortEarly: false,
+    });
+
+    if (validation.error) {
+      const erros = validation.error.details.map((d) => d.message);
+      res.status(422).send(erros);
+      return;
+    }
+
+    await db.collection("messages").insertOne(newMessage);
+    res.sendStatus(201);
+  } catch (err) {
+    res.status(500).send(err);
+  }
 });
 
 app.listen(process.env.PORT, () => {
