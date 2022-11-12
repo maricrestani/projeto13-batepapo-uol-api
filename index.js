@@ -24,25 +24,57 @@ mongoClient
     console.log(err);
   });
 
+const userSchema = joi.object({
+  name: joi.string().required(),
+  lastStatus: joi.required(),
+});
+
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
 
-  if (!name) {
-    res.status(422).send({ error: "name deve ser strings não vazio" });
-    return;
+  try {
+    if (!name) {
+      res.status(422).send({ error: "name deve ser strings não vazio" });
+      return;
+    }
+
+    const userAlredyExists = await db
+      .collection("users")
+      .findOne({ name: name });
+
+    if (userAlredyExists) {
+      res.sendStatus(409);
+      return;
+    }
+
+    const user = {
+      name,
+      lastStatus: Date.now(),
+    };
+
+    const validation = userSchema.validate(user, { abortEarly: false });
+
+    if (validation.error) {
+      const erros = validation.error.details.map((d) => d.message);
+      res.status(422).send(erros);
+      return;
+    }
+
+    const loginMessage = {
+      from: name,
+      to: "Todos",
+      text: "entra na sala...",
+      type: "status",
+      time: dayjs(participants.lastStatus).format("HH:mm:ss"),
+    };
+
+    await db.collection("users").insertOne(user);
+    await db.collection("messages").insertOne(loginMessage);
+    res.sendStatus(201);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
   }
-
-  const loginMessage = {
-    from: name,
-    to: "Todos",
-    text: "entra na sala...",
-    type: "status",
-    time: dayjs(participants.lastStatus).format("HH:mm:ss"),
-  };
-
-  await db.collection("users").insertOne({ name, lastStatus: Date.now() });
-  await db.collection("messages").insertOne(loginMessage);
-  res.sendStatus(201);
 });
 
 app.listen(process.env.PORT, () => {
