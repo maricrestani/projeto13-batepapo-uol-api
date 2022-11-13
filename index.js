@@ -93,7 +93,7 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req, res) => {
   try {
     const { to, text, type } = req.body;
-    const user = req.headers.user;
+    const { user } = req.headers;
     const userExists = await db.collection("messages").findOne({ from: user });
     if (!userExists) {
       res.status(422).send("erro na verific se usuário existe");
@@ -141,6 +141,28 @@ app.get("/messages", async (req, res) => {
     res.send(messages);
   } catch (err) {
     res.sendStatus(500);
+  }
+});
+
+app.post("/status", async (req, res) => {
+  try {
+    const { user } = req.headers;
+    const userExists = await db.collection("messages").findOne({ from: user });
+    if (!userExists) {
+      res.sendStatus(404);
+      return;
+    }
+
+    await db.collection("messages").updateOne(
+      {
+        user: user,
+      },
+      { $set: { lastStatus: Date.now() } }
+    );
+
+    res.sendStatus(200);
+  } catch (error) {
+    res.status(500).send(error);
   }
 });
 
