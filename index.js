@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import cors from "cors";
 import dayjs from "dayjs";
 import joi from "joi";
@@ -35,9 +35,11 @@ const messageSchema = joi.object({
 });
 
 app.post("/participants", async (req, res) => {
-  const { user } = req.body;
-  const userExists = await db.collection("messages").findOne({ from: user });
-
+ 
+  const userExists = await db
+    .collection("messages")
+    .findOne({ from: req.body.name });
+  
   if (userExists) {
     res.status(409).send("Usuário já existe");
     return;
@@ -51,7 +53,7 @@ app.post("/participants", async (req, res) => {
   }
 
   const loginMessage = {
-    from: user,
+    from: req.body.name,
     to: "Todos",
     text: "entra na sala...",
     type: "status",
@@ -137,6 +139,27 @@ app.post("/status", async (req, res) => {
   );
 
   res.sendStatus(200);
+});
+
+app.delete("/messages/:id", async (req, res) => {
+  const user = req.headers.user;
+  const paramsId = req.params.id;
+
+  const message = await db
+    .collection("messages")
+    .findOne({ _id: ObjectId(paramsId) });
+
+  if (!message) {
+    res.sendStatus(404);
+    return;
+  }
+  if (message.from !== user) {
+    res.sendStatus(401);
+    return;
+  }
+
+  db.collection("messages").deleteOne({ _id: ObjectId(paramsId) });
+  res.status(200).send({ message: "Documento apagado com sucesso!" });
 });
 
 async function removeInactiveUsers() {
