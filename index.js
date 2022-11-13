@@ -35,11 +35,10 @@ const messageSchema = joi.object({
 });
 
 app.post("/participants", async (req, res) => {
- 
   const userExists = await db
     .collection("messages")
     .findOne({ from: req.body.name });
-  
+
   if (userExists) {
     res.status(409).send("Usuário já existe");
     return;
@@ -104,22 +103,25 @@ app.post("/messages", async (req, res) => {
 });
 
 app.get("/messages", async (req, res) => {
-  try {
-    const messages = await db.collection("messages").find({}).toArray();
-    const limit = parseInt(req.query.limit);
+  const { user } = req.headers;
+  const limit = parseInt(req.query.limit);
+  const allMessages = await db.collection("messages").find({}).toArray();
+  const messages = [];
 
-    if (limit) {
-      const limitedMessages = messages.filter(
-        (message, index) => index < limit
-      );
-      res.send(limitedMessages);
-      return;
+  for (let i = 0; i < allMessages.length; i++) {
+    let item = allMessages[i];
+    if (item.to === "Todos" || item.to === user || item.from === user) {
+      messages.unshift(item);
     }
-
-    res.send(messages);
-  } catch (err) {
-    res.sendStatus(500);
   }
+
+  if (limit) {
+    const limitedMessages = messages.filter((message, index) => index < limit);
+    res.send(limitedMessages);
+    return;
+  }
+
+  res.send(messages);
 });
 
 app.post("/status", async (req, res) => {
