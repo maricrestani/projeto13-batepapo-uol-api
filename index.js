@@ -78,7 +78,7 @@ app.post("/messages", async (req, res) => {
 
   const userExists = await db.collection("messages").findOne({ from: user });
   if (!userExists) {
-    res.status(422).send("erro na verific se usuário existe");
+    res.sendStatus(422);
     return;
   }
 
@@ -111,7 +111,7 @@ app.get("/messages", async (req, res) => {
   for (let i = 0; i < allMessages.length; i++) {
     let item = allMessages[i];
     if (item.to === "Todos" || item.to === user || item.from === user) {
-      messages.unshift(item);
+      messages.push(item);
     }
   }
 
