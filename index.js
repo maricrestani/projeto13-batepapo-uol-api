@@ -38,9 +38,8 @@ const messageSchema = joi.object({
 });
 
 app.post("/participants", async (req, res) => {
-  const { name } = req.body;
-
   try {
+    const { name } = req.body;
     const userAlredyExists = await db
       .collection("users")
       .findOne({ name: name });
@@ -165,6 +164,28 @@ app.post("/status", async (req, res) => {
     res.status(500).send(error);
   }
 });
+
+async function removeInactiveUsers() {
+  const users = await db.collection("users").find({}).toArray();
+  users.map((user) => {
+    if (
+      dayjs().format("HHmmss") - dayjs(user.lastStatus).format("HHmmss") >
+      10
+    ) {
+      db.collection("users").deleteOne({ _id: user._id });
+
+      db.collection("messages").insertOne({
+        from: user.name,
+        to: "Todos",
+        text: "sai da sala...",
+        type: "status",
+        time: dayjs().format("HH:MM:ss"),
+      });
+    }
+  });
+}
+
+setInterval(removeInactiveUsers, 15000);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server runnin in port: ${process.env.PORT}`);
