@@ -83,7 +83,6 @@ app.post("/participants", async (req, res) => {
 app.get("/participants", async (req, res) => {
   try {
     const participantsList = db.collection("users");
-
     const participants = await participantsList.find().toArray();
     res.send(participants);
   } catch (err) {
@@ -123,6 +122,25 @@ app.post("/messages", async (req, res) => {
     res.sendStatus(201);
   } catch (err) {
     res.status(500).send(err);
+  }
+});
+
+app.get("/messages", async (req, res) => {
+  try {
+    const messages = await db.collection("messages").find().toArray();
+    const limit = parseInt(req.query.limit);
+
+    if (limit) {
+      const limitedMessages = messages.filter(
+        (message, index) => index < limit
+      );
+      res.send(limitedMessages);
+      return;
+    }
+
+    res.send(messages);
+  } catch (err) {
+    res.sendStatus(500);
   }
 });
 
