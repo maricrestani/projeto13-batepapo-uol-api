@@ -65,12 +65,10 @@ app.post("/participants", async (req, res) => {
 });
 
 app.get("/participants", async (req, res) => {
-  try {
-    const participants = await db.collection("users").find({}).toArray();
-    res.send(participants);
-  } catch (err) {
-    res.sendStatus(500);
-  }
+  const participants = await db.collection("users").find({}).toArray();
+  res.send(participants);
+
+  res.sendStatus(500);
 });
 
 app.post("/messages", async (req, res) => {
